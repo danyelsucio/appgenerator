@@ -10,8 +10,13 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.24.0'
-      - run: flutter pub get
-      - run: flutter build apk --release
+          cache: true
+      - name: Create Flutter project structure
+        run: flutter create . --project-name appgenerator --platforms=android
+      - name: Get dependencies
+        run: flutter pub get
+      - name: Build APK
+        run: flutter build apk --release
       - uses: actions/upload-artifact@v4
         with:
           name: app-release

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:docx_to_text/docx_to_text.dart';
+import 'package:csv/csv.dart';
 import 'dart:io';
 
 void main() {
@@ -30,21 +32,45 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   String contenidoArchivo = '';
   String nombreArchivo = 'Ningún archivo seleccionado';
+  List<List<dynamic>> datosCSV = [];
 
   Future<void> importarArchivo() async {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['txt', 'docx', 'json'],
-        initialDirectory: '/storage/emulated/0/Documents', // Carpeta Documentos
+        allowedExtensions: ['txt', 'docx', 'csv'],
+        initialDirectory: '/storage/emulated/0/Documents',
       );
 
-      if (result != null) {
-        File file = File(result.files.single.path!);
-        String contenido = await file.readAsString();
+      if (result!= null) {
+        String path = result.files.single.path!;
+        String extension = path.split('.').last.toLowerCase();
+        String contenido = '';
+
+        if (extension == 'docx') {
+          final file = File(path);
+          final bytes = await file.readAsBytes();
+          contenido = docxToText(bytes);
+        } else if (extension == 'csv') {
+          final input = File(path).openRead();
+          final fields = await input
+             .transform(utf8.decoder)
+             .transform(const CsvToListConverter())
+             .toList();
+          setState(() {
+            datosCSV = fields;
+            nombreArchivo = result.files.single.name;
+            contenidoArchivo = 'CSV_CARGADO';
+          });
+          return;
+        } else {
+          contenido = await File(path).readAsString();
+        }
+
         setState(() {
           contenidoArchivo = contenido;
           nombreArchivo = result.files.single.name;
+          datosCSV = [];
         });
       }
     } catch (e) {
@@ -103,7 +129,7 @@ class _HomePageState extends State<HomePage> {
           PopupMenuButton(
             icon: const Icon(Icons.more_vert, color: Colors.white),
             itemBuilder: (context) => [
-              const PopupMenuItem(value: 1, child: Text('Opción 1')),
+              const PopupMenuItem(value: 1, child: Text('Exportar')),
             ],
           ),
         ],
@@ -114,20 +140,16 @@ class _HomePageState extends State<HomePage> {
           children: [
             const DrawerHeader(
               decoration: BoxDecoration(color: Colors.red),
-              child: Text('Menú', style: TextStyle(color: Colors.white, fontSize: 24)),
+              child: Text('Plantillas', style: TextStyle(color: Colors.white, fontSize: 24)),
             ),
             ListTile(
               leading: const Icon(Icons.file_open, color: Colors.white),
               title: const Text('Importar archivo', style: TextStyle(color: Colors.white)),
+              subtitle: const Text('DOCX, TXT, CSV', style: TextStyle(color: Colors.white54, fontSize: 12)),
               onTap: () {
-                Navigator.pop(context); // Cierra el drawer
-                importarArchivo(); // Abre selector de archivos
+                Navigator.pop(context);
+                importarArchivo();
               },
-            ),
-            ListTile(
-              leading: const Icon(Icons.settings, color: Colors.white),
-              title: const Text('Ajustes', style: TextStyle(color: Colors.white)),
-              onTap: () => Navigator.pop(context),
             ),
           ],
         ),
@@ -143,12 +165,33 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(height: 10),
             Expanded(
-              child: SingleChildScrollView(
-                child: SelectableText.rich(
-                  TextSpan(children: resaltarVariables(contenidoArchivo)),
-                  style: const TextStyle(fontSize: 14),
-                ),
-              ),
+              child: contenidoArchivo == 'CSV_CARGADO'
+                 ? SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: SingleChildScrollView(
+                        child: DataTable(
+                          columns: datosCSV.isNotEmpty
+                             ? datosCSV[0].map((e) => DataColumn(
+                                  label: Text(e.toString(),
+                                  style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold))
+                                )).toList()
+                              : [],
+                          rows: datosCSV.length > 1
+                             ? datosCSV.sublist(1).map((row) => DataRow(
+                                  cells: row.map((cell) => DataCell(
+                                    Text(cell.toString(), style: const TextStyle(color: Colors.white70))
+                                  )).toList(),
+                                )).toList()
+                              : [],
+                        ),
+                      ),
+                    )
+                  : SingleChildScrollView(
+                      child: SelectableText.rich(
+                        TextSpan(children: resaltarVariables(contenidoArchivo)),
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ),
             ),
           ],
         ),

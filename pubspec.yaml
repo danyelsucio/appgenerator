@@ -10,6 +10,8 @@ dependencies:
   flutter:
     sdk: flutter
   file_picker: ^8.0.6
+  docx_to_text: ^1.0.2
+  csv: ^6.0.0
   cupertino_icons: ^1.0.8
 
 dev_dependencies:

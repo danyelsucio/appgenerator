@@ -13,10 +13,12 @@ jobs:
           cache: true
       - name: Create Flutter project structure
         run: flutter create . --project-name appgenerator --platforms=android
-      - name: Update Android SDK version
+      - name: Update Android SDK and Kotlin
         run: |
           sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 35/g' android/app/build.gradle
           sed -i 's/targetSdkVersion flutter.targetSdkVersion/targetSdkVersion 35/g' android/app/build.gradle
+          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle
+          sed -i 's/id "org.jetbrains.kotlin.android" version "1.7.10"/id "org.jetbrains.kotlin.android" version "1.9.24"/g' android/settings.gradle
       - name: Get dependencies
         run: flutter pub get
       - name: Build APK
